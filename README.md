@@ -3,6 +3,8 @@
 An unofficial, browser-based tracker for JSON files created by
 [palworld-capture-exporter](https://github.com/Turinqui/palworld-capture-exporter).
 
+**Live tracker:** [palworld-capture-tracker.netlify.app](https://palworld-capture-tracker.netlify.app)
+
 ## Current proof of concept
 
 - Drag-and-drop or choose a capture export.
@@ -35,6 +37,12 @@ Requires Node.js 22.13 or newer.
 ```bash
 npm install
 npm run dev
+```
+
+Netlify uses the browser-only static build configured in `netlify.toml`:
+
+```bash
+npm run build:netlify
 ```
 
 ## Privacy and safety
