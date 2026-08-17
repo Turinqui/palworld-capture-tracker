@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - 2026-08-17
+
+- Support the exporter's complete 288-entry runtime Paldeck catalogue.
+- Show genuinely never-captured Pals from explicit zero-count rows.
+- Preserve names, localisation keys, and Paldeck numbers during import.
+- Show captured species as a caught/total Paldeck count.
+- Distinguish complete v0.2 exports from older caught-only files.
+- Ignore separately preserved human and special non-Paldeck capture records.
+
 ## 0.2.0 - 2026-08-17
 
 - Change the default capture milestone from 12 to 5 for Palworld 1.0.

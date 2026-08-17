@@ -7,16 +7,16 @@ An unofficial, browser-based tracker for JSON files created by
 
 - Drag-and-drop or choose a capture export.
 - Process the file entirely in the browser.
-- Show captured-species and total-capture summaries.
+- Show captured, never-caught, milestone, and remaining-catch summaries.
 - Track the Palworld 1.0 five-capture milestone by default, with an editable goal.
-- Search and filter by verified display name or stable internal Pal ID.
+- Search and filter by in-game display name, Paldeck number, or stable internal ID.
 - Preserve unknown IDs instead of silently dropping new game content.
 - Follow the device colour scheme and provide a persistent light/dark toggle.
 
-The exporter currently emits a sparse capture map: species which have never
-been captured are absent. A separate, versioned catalogue is therefore required
-before the tracker can show the complete Paldeck and genuine never-captured
-species.
+Exporter v0.2.0 joins the sparse save record to Palworld's runtime catalogue,
+so the imported file contains every Paldeck species/form and explicit zero
+counts for never-captured Pals. Older v0.1 files remain importable but cannot
+identify species absent from their caught-only data.
 
 ## Development
 

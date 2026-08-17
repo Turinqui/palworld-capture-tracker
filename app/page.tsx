@@ -3,29 +3,38 @@
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
 import palNameData from "./pal-names.json";
 
-type CaptureEntry = { id: string; name?: string; captureCount: number };
+type CaptureEntry = {
+  id: string;
+  name?: string | null;
+  nameKey?: string;
+  paldeckIndex?: number;
+  paldeckSuffix?: string;
+  captureCount: number;
+};
 type CaptureExport = {
   schemaVersion?: number;
   exporterVersion?: string;
   gameVersion?: string | null;
   exportedAt?: string;
   source?: { platform?: string };
+  summary?: { unmappedCaptureEntryCount?: number };
   pals: CaptureEntry[];
+  unmappedCaptureEntries?: Array<{ id: string; captureCount: number }>;
 };
 type Filter = "all" | "complete" | "incomplete" | "uncaught";
 
 const SAMPLE_EXPORT: CaptureExport = {
   schemaVersion: 1,
-  exporterVersion: "0.1.0",
+  exporterVersion: "0.2.0",
   gameVersion: "1.0.3",
   exportedAt: "2026-08-17T02:42:00Z",
   source: { platform: "WinGDK" },
   pals: [
-    { id: "SheepBall", captureCount: 5 },
-    { id: "PinkCat", captureCount: 7 },
-    { id: "BlueDragon", captureCount: 3 },
-    { id: "WhiteShieldDragon", captureCount: 1 },
-    { id: "Anubis", captureCount: 0 },
+    { id: "SheepBall", name: "Lamball", nameKey: "PAL_NAME_SheepBall", paldeckIndex: 1, paldeckSuffix: "", captureCount: 5 },
+    { id: "PinkCat", name: "Cattiva", nameKey: "PAL_NAME_PinkCat", paldeckIndex: 2, paldeckSuffix: "", captureCount: 7 },
+    { id: "ChickenPal", name: "Chikipi", nameKey: "PAL_NAME_ChickenPal", paldeckIndex: 3, paldeckSuffix: "", captureCount: 3 },
+    { id: "KingBahamut_Dragon", name: "Blazamut Ryu", nameKey: "PAL_NAME_KingBahamut_Dragon", paldeckIndex: 137, paldeckSuffix: "B", captureCount: 0 },
+    { id: "FlowerPrince", name: "Dandilord", nameKey: "PAL_NAME_FlowerPrince", paldeckIndex: 194, paldeckSuffix: "", captureCount: 0 },
   ],
 };
 
@@ -56,6 +65,11 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
+function formatPaldeckNumber(entry: CaptureEntry) {
+  if (!Number.isFinite(entry.paldeckIndex)) return null;
+  return `No. ${entry.paldeckIndex}${entry.paldeckSuffix ?? ""}`;
+}
+
 function validateExport(value: unknown): CaptureExport {
   if (!value || typeof value !== "object") throw new Error("This file does not contain a JSON object.");
   const candidate = value as Partial<CaptureExport>;
@@ -65,7 +79,21 @@ function validateExport(value: unknown): CaptureExport {
       !Number.isFinite((entry as CaptureEntry).captureCount) || (entry as CaptureEntry).captureCount < 0) {
       throw new Error(`Pal entry ${index + 1} has an invalid ID or capture count.`);
     }
-    return { id: (entry as CaptureEntry).id, captureCount: Math.floor((entry as CaptureEntry).captureCount) };
+    const raw = entry as CaptureEntry;
+    if (raw.name !== undefined && raw.name !== null && typeof raw.name !== "string") {
+      throw new Error(`Pal entry ${index + 1} has an invalid display name.`);
+    }
+    if (raw.paldeckIndex !== undefined && !Number.isFinite(raw.paldeckIndex)) {
+      throw new Error(`Pal entry ${index + 1} has an invalid Paldeck number.`);
+    }
+    return {
+      id: raw.id,
+      name: raw.name,
+      nameKey: typeof raw.nameKey === "string" ? raw.nameKey : undefined,
+      paldeckIndex: raw.paldeckIndex,
+      paldeckSuffix: typeof raw.paldeckSuffix === "string" ? raw.paldeckSuffix : undefined,
+      captureCount: Math.floor(raw.captureCount),
+    };
   });
   return { ...candidate, pals } as CaptureExport;
 }
@@ -109,10 +137,11 @@ export default function Home() {
     if (!data) return null;
     const captured = data.pals.filter((pal) => pal.captureCount > 0).length;
     const complete = data.pals.filter((pal) => pal.captureCount >= goal).length;
+    const uncaught = data.pals.filter((pal) => pal.captureCount === 0).length;
     const named = data.pals.filter((pal) => resolvePalName(pal)).length;
     const totalCaptures = data.pals.reduce((sum, pal) => sum + pal.captureCount, 0);
     const catchesToGoal = data.pals.reduce((sum, pal) => sum + Math.max(0, goal - pal.captureCount), 0);
-    return { captured, complete, named, totalCaptures, catchesToGoal };
+    return { captured, complete, uncaught, named, totalCaptures, catchesToGoal };
   }, [data, goal]);
 
   const visiblePals = useMemo(() => {
@@ -122,14 +151,20 @@ export default function Home() {
       if (filter === "complete" && pal.captureCount < goal) return false;
       if (filter === "incomplete" && (pal.captureCount === 0 || pal.captureCount >= goal)) return false;
       if (filter === "uncaught" && pal.captureCount !== 0) return false;
-      return !needle || pal.id.toLowerCase().includes(needle) || (resolvePalName(pal)?.toLowerCase().includes(needle) ?? false);
-    }).sort((a, b) => a.captureCount - b.captureCount || a.id.localeCompare(b.id));
+      return !needle ||
+        pal.id.toLowerCase().includes(needle) ||
+        (resolvePalName(pal)?.toLowerCase().includes(needle) ?? false) ||
+        (formatPaldeckNumber(pal)?.toLowerCase().includes(needle) ?? false);
+    }).sort((a, b) => a.captureCount - b.captureCount ||
+      (a.paldeckIndex ?? Number.MAX_SAFE_INTEGER) - (b.paldeckIndex ?? Number.MAX_SAFE_INTEGER) ||
+      (a.paldeckSuffix ?? "").localeCompare(b.paldeckSuffix ?? "") || a.id.localeCompare(b.id));
   }, [data, filter, goal, query]);
 
   const filters: Array<{ id: Filter; label: string }> = [
     { id: "all", label: "All" }, { id: "incomplete", label: "Still hunting" },
-    { id: "complete", label: "Goal reached" }, { id: "uncaught", label: "Uncaught" },
+    { id: "complete", label: "Goal reached" }, { id: "uncaught", label: "Never caught" },
   ];
+  const hasCompleteCatalogue = Boolean(data?.pals.length && data.pals.every((pal) => Number.isFinite(pal.paldeckIndex)));
 
   return (
     <main>
@@ -176,14 +211,14 @@ export default function Home() {
             </div>
 
             <div className="stats-grid">
-              <article><span>Captured species</span><strong>{stats?.captured.toLocaleString()}</strong><small>present in this export</small></article>
-              <article><span>Total captures</span><strong>{stats?.totalCaptures.toLocaleString()}</strong><small>across all listed species</small></article>
+              <article><span>Captured species</span><strong>{stats?.captured.toLocaleString()}<i> / {data.pals.length}</i></strong><small>unique Paldeck species and forms</small></article>
+              <article className="uncaught-stat"><span>Never caught</span><strong>{hasCompleteCatalogue ? stats?.uncaught.toLocaleString() : "—"}</strong><small>{hasCompleteCatalogue ? "missing from your capture record" : "requires an exporter v0.2 file"}</small></article>
               <article><span>Goal reached</span><strong>{stats?.complete.toLocaleString()}</strong><small>at least {goal} captures</small></article>
               <article className="accent-stat"><span>Catches remaining</span><strong>{stats?.catchesToGoal.toLocaleString()}</strong><small>for listed species to reach {goal}</small></article>
             </div>
 
             <div className="toolbar">
-              <label className="search-field"><span aria-hidden="true">⌕</span><span className="sr-only">Search by Pal name or internal ID</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names or Pal IDs…" /></label>
+              <label className="search-field"><span aria-hidden="true">⌕</span><span className="sr-only">Search by Pal name, Paldeck number, or internal ID</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names, Paldeck numbers or IDs…" /></label>
               <label className="goal-field">Capture goal<input type="number" min="1" max="999" value={goal} onChange={(event) => setGoal(Math.max(1, Number(event.target.value) || 1))} /></label>
             </div>
 
@@ -197,16 +232,17 @@ export default function Home() {
                 const remaining = Math.max(0, goal - pal.captureCount);
                 const percent = Math.min(100, (pal.captureCount / goal) * 100);
                 const displayName = resolvePalName(pal);
+                const paldeckNumber = formatPaldeckNumber(pal);
                 return <article className="pal-row" key={pal.id}>
                   <div className="pal-orb" aria-hidden="true"><span /></div>
-                  <div className="pal-identity"><strong>{displayName ?? pal.id}</strong><code>{displayName ? pal.id : "Unverified internal ID"}</code></div>
+                  <div className="pal-identity"><strong>{displayName ?? pal.id}</strong><code>{paldeckNumber ? `${paldeckNumber} · ${pal.id}` : (displayName ? pal.id : "Unverified internal ID")}</code></div>
                   <div className="progress-wrap"><div><span>{remaining ? `${remaining} to goal` : "Goal reached"}</span><span>{Math.round(percent)}%</span></div><div className="progress-track"><span style={{ width: `${percent}%` }} /></div></div>
                   <div className="capture-count"><strong>{pal.captureCount}</strong><span>/ {goal}</span></div>
                 </article>;
               }) : <div className="empty-state">No Pals match that search and filter.</div>}
             </div>
 
-            <aside className="catalogue-note"><strong>About names and missing Pals</strong><p>{stats?.named} of {data.pals.length} exported IDs matched the current verified name seed. Unresolved v1.0 IDs remain visible for later matching. Never-captured species will appear after we add the complete game-derived catalogue.</p></aside>
+            <aside className={`catalogue-note ${hasCompleteCatalogue ? "catalogue-complete" : ""}`}><strong>{hasCompleteCatalogue ? "Complete Paldeck detected" : "Older caught-only export detected"}</strong><p>{hasCompleteCatalogue ? `${stats?.named} of ${data.pals.length} entries have in-game labels. Use “Never caught” to see the ${stats?.uncaught} species absent from your capture record. ${data.summary?.unmappedCaptureEntryCount ?? data.unmappedCaptureEntries?.length ?? 0} non-Paldeck records were safely ignored.` : "This file predates the complete runtime catalogue, so species with no captures are absent. Export again with PalCaptureExporter v0.2.0 to reveal them."}</p></aside>
           </section>
         )}
 
