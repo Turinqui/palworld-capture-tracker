@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import palNameData from "./pal-names.json";
 import { getPalSpecialCase } from "./pal-special-cases";
 
@@ -72,6 +72,11 @@ function formatPaldeckNumber(entry: CaptureEntry) {
   return `No. ${entry.paldeckIndex}${entry.paldeckSuffix ?? ""}`;
 }
 
+function palDbMapUrl(id: string, map: "Palpagos_Islands" | "The_World_Tree", time: "dayTimeLocations" | "nightTimeLocations") {
+  const params = new URLSearchParams({ pal: id, t: time });
+  return `https://paldb.cc/en/${map}?${params.toString()}`;
+}
+
 function validateExport(value: unknown): CaptureExport {
   if (!value || typeof value !== "object") throw new Error("This file does not contain a JSON object.");
   const candidate = value as Partial<CaptureExport>;
@@ -109,6 +114,19 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [goal, setGoal] = useState(5);
+  const [mapPal, setMapPal] = useState<CaptureEntry | null>(null);
+  const mapCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mapPal) return;
+    mapCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMapPal(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mapPal]);
+
   function toggleTheme() {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -241,7 +259,7 @@ export default function Home() {
                 const specialCase = getPalSpecialCase(pal.id);
                 return <article className={`pal-row ${specialCase ? "pal-row-special" : ""}`} key={pal.id}>
                   <div className="pal-orb" aria-hidden="true"><span /></div>
-                  <div className="pal-identity"><strong>{displayName ?? pal.id}{specialCase && <span className="special-badge">{specialCase.label}</span>}</strong><code>{paldeckNumber ? `${paldeckNumber} · ${pal.id}` : (displayName ? pal.id : "Unverified internal ID")}</code></div>
+                  <div className="pal-identity"><strong>{specialCase ? (displayName ?? pal.id) : <button className="pal-map-trigger" onClick={() => setMapPal(pal)} aria-label={`Show habitat maps for ${displayName ?? pal.id}`} title="Show habitat maps">{displayName ?? pal.id}<span aria-hidden="true">⌖</span></button>}{specialCase && <span className="special-badge">{specialCase.label}</span>}</strong><code>{paldeckNumber ? `${paldeckNumber} · ${pal.id}` : (displayName ? pal.id : "Unverified internal ID")}</code></div>
                   {specialCase ? <><div className="special-status">{specialCase.reason}</div><div className="capture-count special-count"><strong>—</strong></div></> : <><div className="progress-wrap"><div><span>{remaining ? `${remaining} to goal` : "Goal reached"}</span><span>{Math.round(percent)}%</span></div><div className="progress-track"><span style={{ width: `${percent}%` }} /></div></div><div className="capture-count"><strong>{pal.captureCount}</strong><span>/ {goal}</span></div></>}
                 </article>;
               }) : <div className="empty-state">No Pals match that search and filter.</div>}
@@ -253,6 +271,21 @@ export default function Home() {
 
         <footer><p>Unofficial fan project. Palworld and related names belong to their respective rights holders.</p><span>Read-only by design · No save changes</span></footer>
       </div>
+
+      {mapPal && <div className="map-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setMapPal(null); }}>
+        <section className="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-dialog-title">
+          <button ref={mapCloseRef} className="map-modal-close" onClick={() => setMapPal(null)} aria-label="Close habitat map choices">×</button>
+          <div className="map-modal-icon" aria-hidden="true">⌖</div>
+          <p className="map-modal-kicker">Habitat maps</p>
+          <h2 id="map-dialog-title">{resolvePalName(mapPal) ?? mapPal.id}</h2>
+          <p className="map-modal-intro">Choose a world and time. The filtered habitat map will open on PalDB in a new tab.</p>
+          <div className="map-worlds">
+            <div><strong>Palpagos Islands</strong><div className="map-time-links"><a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a><a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div></div>
+            <div><strong>The World Tree</strong><div className="map-time-links"><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div></div>
+          </div>
+          <p className="map-modal-note">An empty map means PalDB has no habitat recorded for that world and time. Maps and location data are provided by <a href="https://paldb.cc" target="_blank" rel="noreferrer">PalDB</a>.</p>
+        </section>
+      </div>}
     </main>
   );
 }

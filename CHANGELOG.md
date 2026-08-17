@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - 2026-08-17
+
+- Make catchable Pal names clickable with a habitat-map indicator.
+- Add a compact world and day/night chooser for each Pal.
+- Open stable-ID-filtered PalDB maps in a new tab with clear attribution.
+- Keep third-party map assets and data on PalDB rather than embedding or hotlinking them.
+
 ## 0.3.1 - 2026-08-17
 
 - Exclude Astralym, the uncatchable final boss, from capture goals and "Never caught" totals.
