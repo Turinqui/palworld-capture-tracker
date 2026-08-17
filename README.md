@@ -11,12 +11,17 @@ An unofficial, browser-based tracker for JSON files created by
 - Track the Palworld 1.0 five-capture milestone by default, with an editable goal.
 - Search and filter by in-game display name, Paldeck number, or stable internal ID.
 - Preserve unknown IDs instead of silently dropping new game content.
+- Exclude known uncatchable Palpedia entries from capture goals while keeping them visible.
 - Follow the device colour scheme and provide a persistent light/dark toggle.
 
 Exporter v0.2.0 joins the sparse save record to Palworld's runtime catalogue,
 so the imported file contains every Paldeck species/form and explicit zero
 counts for never-captured Pals. Older v0.1 files remain importable but cannot
 identify species absent from their caught-only data.
+
+Astralym (`WorldTreeDragon`) is currently marked as an uncatchable final-boss
+entry. It remains searchable in the full list but is excluded from captured,
+never-caught, milestone, and catches-remaining totals.
 
 ## Development
 

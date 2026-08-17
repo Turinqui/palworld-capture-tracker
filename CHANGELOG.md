@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 - 2026-08-17
+
+- Exclude Astralym, the uncatchable final boss, from capture goals and "Never caught" totals.
+- Keep Astralym visible in the full Paldeck list with an explicit uncatchable-boss label.
+- Base captured-species totals on the 287 currently catchable Paldeck entries.
+
 ## 0.3.0 - 2026-08-17
 
 - Support the exporter's complete 288-entry runtime Paldeck catalogue.
