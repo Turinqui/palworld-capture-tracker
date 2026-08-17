@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-08-17
+
+- Improve habitat-map button contrast in dark mode.
+- Add a clearly visible keyboard focus ring to habitat-map actions.
+
 ## 0.4.0 - 2026-08-17
 
 - Make catchable Pal names clickable with a habitat-map indicator.
