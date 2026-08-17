@@ -1,8 +1,9 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
+import palNameData from "./pal-names.json";
 
-type CaptureEntry = { id: string; captureCount: number };
+type CaptureEntry = { id: string; name?: string; captureCount: number };
 type CaptureExport = {
   schemaVersion?: number;
   exporterVersion?: string;
@@ -20,7 +21,7 @@ const SAMPLE_EXPORT: CaptureExport = {
   exportedAt: "2026-08-17T02:42:00Z",
   source: { platform: "WinGDK" },
   pals: [
-    { id: "SheepBall", captureCount: 12 },
+    { id: "SheepBall", captureCount: 5 },
     { id: "PinkCat", captureCount: 7 },
     { id: "BlueDragon", captureCount: 3 },
     { id: "WhiteShieldDragon", captureCount: 1 },
@@ -28,8 +29,22 @@ const SAMPLE_EXPORT: CaptureExport = {
   ],
 };
 
-function friendlyId(id: string) {
-  return id.replace(/_/g, " · ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/\s+/g, " ").trim();
+type NameData = { names: Record<string, string>; suffixes: Record<string, string>; overrides: Record<string, string> };
+const nameData = palNameData as NameData;
+
+function resolvePalName(entry: CaptureEntry): string | null {
+  if (entry.name?.trim()) return entry.name.trim();
+  let id = entry.id;
+  const alpha = /^(?:BOSS|Boss)_/.test(id);
+  id = id.replace(/^(?:BOSS|Boss)_/, "");
+  const override = nameData.overrides[id];
+  if (override) return alpha ? `Alpha ${override}` : override;
+  const parts = id.split("_");
+  const base = nameData.names[parts[0]];
+  if (!base) return null;
+  const suffix = parts.length > 1 ? nameData.suffixes[parts.at(-1) ?? ""] : null;
+  const resolved = suffix ? `${base} ${suffix}` : base;
+  return alpha ? `Alpha ${resolved}` : resolved;
 }
 
 function formatDate(value?: string) {
@@ -63,7 +78,12 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [goal, setGoal] = useState(12);
+  const [goal, setGoal] = useState(5);
+  function toggleTheme() {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("pal-capture-theme", next);
+  }
 
   async function importFile(file?: File) {
     if (!file) return;
@@ -89,9 +109,10 @@ export default function Home() {
     if (!data) return null;
     const captured = data.pals.filter((pal) => pal.captureCount > 0).length;
     const complete = data.pals.filter((pal) => pal.captureCount >= goal).length;
+    const named = data.pals.filter((pal) => resolvePalName(pal)).length;
     const totalCaptures = data.pals.reduce((sum, pal) => sum + pal.captureCount, 0);
     const catchesToGoal = data.pals.reduce((sum, pal) => sum + Math.max(0, goal - pal.captureCount), 0);
-    return { captured, complete, totalCaptures, catchesToGoal };
+    return { captured, complete, named, totalCaptures, catchesToGoal };
   }, [data, goal]);
 
   const visiblePals = useMemo(() => {
@@ -101,7 +122,7 @@ export default function Home() {
       if (filter === "complete" && pal.captureCount < goal) return false;
       if (filter === "incomplete" && (pal.captureCount === 0 || pal.captureCount >= goal)) return false;
       if (filter === "uncaught" && pal.captureCount !== 0) return false;
-      return !needle || pal.id.toLowerCase().includes(needle) || friendlyId(pal.id).toLowerCase().includes(needle);
+      return !needle || pal.id.toLowerCase().includes(needle) || (resolvePalName(pal)?.toLowerCase().includes(needle) ?? false);
     }).sort((a, b) => a.captureCount - b.captureCount || a.id.localeCompare(b.id));
   }, [data, filter, goal, query]);
 
@@ -116,7 +137,12 @@ export default function Home() {
         <a className="brand" href="#top" aria-label="Palworld Capture Tracker home">
           <span className="brand-mark" aria-hidden="true"><span /></span><span>Capture Tracker</span>
         </a>
-        <a className="github-link" href="https://github.com/Turinqui/palworld-capture-tracker" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        <div className="header-actions">
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark mode" title="Toggle light and dark mode">
+            <span className="moon-icon" aria-hidden="true">☾</span><span className="sun-icon" aria-hidden="true">☀</span>
+          </button>
+          <a className="github-link" href="https://github.com/Turinqui/palworld-capture-tracker" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </div>
       </header>
 
       <div className="page-shell" id="top">
@@ -157,7 +183,7 @@ export default function Home() {
             </div>
 
             <div className="toolbar">
-              <label className="search-field"><span aria-hidden="true">⌕</span><span className="sr-only">Search by internal Pal ID</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Pal IDs…" /></label>
+              <label className="search-field"><span aria-hidden="true">⌕</span><span className="sr-only">Search by Pal name or internal ID</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names or Pal IDs…" /></label>
               <label className="goal-field">Capture goal<input type="number" min="1" max="999" value={goal} onChange={(event) => setGoal(Math.max(1, Number(event.target.value) || 1))} /></label>
             </div>
 
@@ -170,16 +196,17 @@ export default function Home() {
               {visiblePals.length ? visiblePals.map((pal) => {
                 const remaining = Math.max(0, goal - pal.captureCount);
                 const percent = Math.min(100, (pal.captureCount / goal) * 100);
+                const displayName = resolvePalName(pal);
                 return <article className="pal-row" key={pal.id}>
                   <div className="pal-orb" aria-hidden="true"><span /></div>
-                  <div className="pal-identity"><strong>{friendlyId(pal.id)}</strong><code>{pal.id}</code></div>
+                  <div className="pal-identity"><strong>{displayName ?? pal.id}</strong><code>{displayName ? pal.id : "Unverified internal ID"}</code></div>
                   <div className="progress-wrap"><div><span>{remaining ? `${remaining} to goal` : "Goal reached"}</span><span>{Math.round(percent)}%</span></div><div className="progress-track"><span style={{ width: `${percent}%` }} /></div></div>
                   <div className="capture-count"><strong>{pal.captureCount}</strong><span>/ {goal}</span></div>
                 </article>;
               }) : <div className="empty-state">No Pals match that search and filter.</div>}
             </div>
 
-            <aside className="catalogue-note"><strong>About missing Pals</strong><p>This exporter currently contains captured IDs only. Never-captured species will appear after the separate, versioned Pal catalogue is added.</p></aside>
+            <aside className="catalogue-note"><strong>About names and missing Pals</strong><p>{stats?.named} of {data.pals.length} exported IDs matched the current verified name seed. Unresolved v1.0 IDs remain visible for later matching. Never-captured species will appear after we add the complete game-derived catalogue.</p></aside>
           </section>
         )}
 

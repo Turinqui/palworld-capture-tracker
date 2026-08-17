@@ -8,9 +8,10 @@ An unofficial, browser-based tracker for JSON files created by
 - Drag-and-drop or choose a capture export.
 - Process the file entirely in the browser.
 - Show captured-species and total-capture summaries.
-- Set a capture milestone and see remaining catches.
-- Search and filter by stable internal Pal ID.
+- Track the Palworld 1.0 five-capture milestone by default, with an editable goal.
+- Search and filter by verified display name or stable internal Pal ID.
 - Preserve unknown IDs instead of silently dropping new game content.
+- Follow the device colour scheme and provide a persistent light/dark toggle.
 
 The exporter currently emits a sparse capture map: species which have never
 been captured are absent. A separate, versioned catalogue is therefore required

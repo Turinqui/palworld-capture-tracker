@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-08-17
+
+- Change the default capture milestone from 12 to 5 for Palworld 1.0.
+- Add a persistent dark-mode toggle which initially follows the device preference.
+- Resolve internal IDs to verified in-game English names where the bundled catalogue has coverage.
+- Keep unresolved IDs explicit instead of presenting generated words as Pal names.
+
 ## 0.1.0 - 2026-08-17
 
 - Add local drag-and-drop JSON import.
