@@ -1,10 +1,19 @@
 # Changelog
 
+## 0.6.0 - 2026-08-21
+
+- Add a dedicated fishing filter and classify Pengullet Lux as Palpagos night fishing.
+- Replace the overly broad “No wild habitat” label with “Other / special”.
+- Mark special Lv.80 World Tree Aura encounters as poor deliberate farming targets.
+- Distinguish Aura-only encounters from Pals with both normal and Aura habitat.
+- Keep acquisition metadata separate from player capture exports.
+
 ## 0.5.0 - 2026-08-21
 
-- Distinguish special Lv.80 World Tree Aura encounters from normal World Tree habitat in the map chooser.
-- Mark verified Aura-only World Tree entries as poor deliberate farming targets while keeping their PalDB map links available.
-- Keep spawn-context metadata separate from the capture export so the exporter stays focused on capture counts.
+- Add a location filter to the “Still hunting” and “Never caught” views.
+- Group useful catches by World Tree, Palpagos Islands, both maps, or no recorded wild habitat.
+- Keep World Tree and Palpagos filters inclusive of Pals available on both maps.
+- Bundle a versioned stable-ID habitat index derived from MIT-licensed spawn data.
 
 ## 0.4.1 - 2026-08-17
 
