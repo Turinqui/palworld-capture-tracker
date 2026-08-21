@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 - 2026-08-21
+
+- Add a location filter to the “Still hunting” and “Never caught” views.
+- Group useful catches by World Tree, Palpagos Islands, both maps, or no recorded wild habitat.
+- Keep World Tree and Palpagos filters inclusive of Pals available on both maps.
+- Bundle a versioned stable-ID habitat index derived from MIT-licensed spawn data.
+
 ## 0.4.1 - 2026-08-17
 
 - Improve habitat-map button contrast in dark mode.

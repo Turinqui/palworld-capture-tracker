@@ -15,6 +15,8 @@ An unofficial, browser-based tracker for JSON files created by
 - Preserve unknown IDs instead of silently dropping new game content.
 - Exclude known uncatchable Palpedia entries from capture goals while keeping them visible.
 - Open PalDB habitat maps for any catchable Pal, filtered by world and day/night.
+- Narrow “Still hunting” and “Never caught” lists by World Tree, Palpagos Islands,
+  both maps, or species with no recorded wild habitat.
 - Follow the device colour scheme and provide a persistent light/dark toggle.
 
 Exporter v0.2.0 joins the sparse save record to Palworld's runtime catalogue,
@@ -27,8 +29,14 @@ entry. It remains searchable in the full list but is excluded from captured,
 never-caught, milestone, and catches-remaining totals.
 
 Habitat buttons use the export's stable internal Pal ID to build attributed
-links to PalDB. PalDB maps open in a new tab; no PalDB images or map data are
-copied, proxied, or embedded by this application.
+links to PalDB. PalDB maps open in a new tab; no PalDB images are copied,
+proxied, or embedded by this application.
+
+The location filters use a compact, bundled index of factual spawn IDs derived
+from the MIT-licensed
+[`Awy64/palworld-atlas-data`](https://github.com/Awy64/palworld-atlas-data)
+dataset. The recorded game build is stored alongside the index so future game
+updates can be audited and refreshed without changing the exporter format.
 
 ## Development
 
