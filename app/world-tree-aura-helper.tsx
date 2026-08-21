@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { PAL_HABITAT_NOTES } from "./pal-habitat-notes";
+import { PAL_HABITAT_NOTES, type PalHabitatNote } from "./pal-habitat-notes";
 import palNameData from "./pal-names.json";
 
 type NameData = { names: Record<string, string>; suffixes: Record<string, string>; overrides: Record<string, string> };
@@ -17,11 +17,11 @@ function resolveNameFromId(id: string) {
   return suffix ? `${base} ${suffix}` : base;
 }
 
-const notesByName = new Map(
-  Object.entries(PAL_HABITAT_NOTES)
-    .map(([id, note]) => [resolveNameFromId(id), note] as const)
-    .filter((entry): entry is [string, (typeof entry)[1]] => Boolean(entry[0]))
-);
+const notesByName = new Map<string, PalHabitatNote>();
+for (const [id, note] of Object.entries(PAL_HABITAT_NOTES)) {
+  const name = resolveNameFromId(id);
+  if (name) notesByName.set(name, note);
+}
 
 function decorateModal(modal: Element) {
   if (modal.querySelector("[data-world-tree-aura-note]")) return;
