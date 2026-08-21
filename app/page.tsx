@@ -1,6 +1,8 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import palHabitatData from "./pal-habitats.json";
+import { getPalHabitatNote } from "./pal-habitat-notes";
 import palNameData from "./pal-names.json";
 import { getPalSpecialCase } from "./pal-special-cases";
 
@@ -23,6 +25,11 @@ type CaptureExport = {
   unmappedCaptureEntries?: Array<{ id: string; captureCount: number }>;
 };
 type Filter = "all" | "complete" | "incomplete" | "uncaught";
+type LocationFilter = "all" | "worldTree" | "palpagos" | "both" | "fishing" | "other";
+type HabitatData = {
+  source: { repository: string; license: string; steamBuildId: string; generatedAt: string };
+  maps: { palpagos: string[]; worldTree: string[] };
+};
 
 const SAMPLE_EXPORT: CaptureExport = {
   schemaVersion: 1,
@@ -42,6 +49,26 @@ const SAMPLE_EXPORT: CaptureExport = {
 
 type NameData = { names: Record<string, string>; suffixes: Record<string, string>; overrides: Record<string, string> };
 const nameData = palNameData as NameData;
+const habitatData = palHabitatData as HabitatData;
+const PALPAGOS_PALS = new Set(habitatData.maps.palpagos);
+const WORLD_TREE_PALS = new Set(habitatData.maps.worldTree);
+
+function habitatId(id: string) {
+  return id.replace(/^(?:BOSS|Boss)_/, "");
+}
+
+function matchesLocation(id: string, location: LocationFilter) {
+  if (location === "all") return true;
+  const lookupId = habitatId(id);
+  const inPalpagos = PALPAGOS_PALS.has(lookupId);
+  const inWorldTree = WORLD_TREE_PALS.has(lookupId);
+  const note = getPalHabitatNote(lookupId);
+  if (location === "worldTree") return inWorldTree;
+  if (location === "palpagos") return inPalpagos || note?.fishingWorld === "palpagos";
+  if (location === "both") return inPalpagos && inWorldTree;
+  if (location === "fishing") return note?.acquisition === "fishing";
+  return !inPalpagos && !inWorldTree && note?.acquisition !== "fishing";
+}
 
 function resolvePalName(entry: CaptureEntry): string | null {
   if (entry.name?.trim()) return entry.name.trim();
@@ -113,6 +140,7 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
   const [goal, setGoal] = useState(5);
   const [mapPal, setMapPal] = useState<CaptureEntry | null>(null);
   const mapCloseRef = useRef<HTMLButtonElement>(null);
@@ -138,7 +166,7 @@ export default function Home() {
     setError("");
     try {
       const parsed = validateExport(JSON.parse(await file.text()));
-      setData(parsed); setFileName(file.name); setFilter("all"); setQuery("");
+      setData(parsed); setFileName(file.name); setFilter("all"); setLocationFilter("all"); setQuery("");
     } catch (caught) {
       setData(null); setFileName("");
       setError(caught instanceof Error ? caught.message : "That file could not be imported.");
@@ -174,6 +202,7 @@ export default function Home() {
       if (filter === "complete" && pal.captureCount < goal) return false;
       if (filter === "incomplete" && (pal.captureCount === 0 || pal.captureCount >= goal)) return false;
       if (filter === "uncaught" && pal.captureCount !== 0) return false;
+      if ((filter === "incomplete" || filter === "uncaught") && !matchesLocation(pal.id, locationFilter)) return false;
       return !needle ||
         pal.id.toLowerCase().includes(needle) ||
         (resolvePalName(pal)?.toLowerCase().includes(needle) ?? false) ||
@@ -181,13 +210,23 @@ export default function Home() {
     }).sort((a, b) => a.captureCount - b.captureCount ||
       (a.paldeckIndex ?? Number.MAX_SAFE_INTEGER) - (b.paldeckIndex ?? Number.MAX_SAFE_INTEGER) ||
       (a.paldeckSuffix ?? "").localeCompare(b.paldeckSuffix ?? "") || a.id.localeCompare(b.id));
-  }, [data, filter, goal, query]);
+  }, [data, filter, goal, locationFilter, query]);
 
   const filters: Array<{ id: Filter; label: string }> = [
     { id: "all", label: "All" }, { id: "incomplete", label: "Still hunting" },
     { id: "complete", label: "Goal reached" }, { id: "uncaught", label: "Never caught" },
   ];
+  const locationFilters: Array<{ id: LocationFilter; label: string; title: string }> = [
+    { id: "all", label: "All locations", title: "Show every Pal in this capture filter" },
+    { id: "worldTree", label: "World Tree", title: "Available at the World Tree, including Pals found on both maps" },
+    { id: "palpagos", label: "Palpagos Islands", title: "Available in Palpagos, including Pals found on both maps" },
+    { id: "both", label: "Both maps", title: "Available in both Palpagos and the World Tree" },
+    { id: "fishing", label: "Fishing", title: "Available from a fishing habitat" },
+    { id: "other", label: "Other / special", title: "No ordinary overworld or fishing habitat recorded" },
+  ];
+  const showLocationFilters = filter === "incomplete" || filter === "uncaught";
   const hasCompleteCatalogue = Boolean(data?.pals.length && data.pals.every((pal) => Number.isFinite(pal.paldeckIndex)));
+  const mapHabitatNote = mapPal ? getPalHabitatNote(mapPal.id) : null;
 
   return (
     <main>
@@ -246,9 +285,16 @@ export default function Home() {
             </div>
 
             <div className="filter-row" aria-label="Filter capture list">
-              {filters.map((item) => <button key={item.id} className={filter === item.id ? "active" : ""} onClick={() => setFilter(item.id)}>{item.label}</button>)}
+              {filters.map((item) => <button key={item.id} className={filter === item.id ? "active" : ""} onClick={() => { setFilter(item.id); if (item.id !== "incomplete" && item.id !== "uncaught") setLocationFilter("all"); }}>{item.label}</button>)}
               <span>{visiblePals.length} shown</span>
             </div>
+
+            {showLocationFilters && <div className="location-filter-row" aria-label="Filter by hunting location">
+              <strong><span aria-hidden="true">⌖</span> Location</strong>
+              <div className="location-filter-options">
+                {locationFilters.map((item) => <button key={item.id} className={locationFilter === item.id ? "active" : ""} aria-pressed={locationFilter === item.id} title={item.title} onClick={() => setLocationFilter(item.id)}>{item.label}</button>)}
+              </div>
+            </div>}
 
             <div className="pal-list">
               {visiblePals.length ? visiblePals.map((pal) => {
@@ -257,12 +303,13 @@ export default function Home() {
                 const displayName = resolvePalName(pal);
                 const paldeckNumber = formatPaldeckNumber(pal);
                 const specialCase = getPalSpecialCase(pal.id);
+                const habitatNote = getPalHabitatNote(pal.id);
                 return <article className={`pal-row ${specialCase ? "pal-row-special" : ""}`} key={pal.id}>
                   <div className="pal-orb" aria-hidden="true"><span /></div>
-                  <div className="pal-identity"><strong>{specialCase ? (displayName ?? pal.id) : <button className="pal-map-trigger" onClick={() => setMapPal(pal)} aria-label={`Show habitat maps for ${displayName ?? pal.id}`} title="Show habitat maps">{displayName ?? pal.id}<span aria-hidden="true">⌖</span></button>}{specialCase && <span className="special-badge">{specialCase.label}</span>}</strong><code>{paldeckNumber ? `${paldeckNumber} · ${pal.id}` : (displayName ? pal.id : "Unverified internal ID")}</code></div>
+                  <div className="pal-identity"><strong>{specialCase ? (displayName ?? pal.id) : <button className="pal-map-trigger" onClick={() => setMapPal(pal)} aria-label={`Show habitat maps for ${displayName ?? pal.id}`} title="Show habitat maps">{displayName ?? pal.id}<span aria-hidden="true">⌖</span></button>}{specialCase && <span className="special-badge">{specialCase.label}</span>}{!specialCase && habitatNote?.worldTree === "rare-aura-only" && <span className="habitat-badge">Rare WT aura</span>}{!specialCase && habitatNote?.acquisition === "fishing" && <span className="habitat-badge fishing-badge">Night fishing</span>}</strong><code>{paldeckNumber ? `${paldeckNumber} · ${pal.id}` : (displayName ? pal.id : "Unverified internal ID")}</code></div>
                   {specialCase ? <><div className="special-status">{specialCase.reason}</div><div className="capture-count special-count"><strong>—</strong></div></> : <><div className="progress-wrap"><div><span>{remaining ? `${remaining} to goal` : "Goal reached"}</span><span>{Math.round(percent)}%</span></div><div className="progress-track"><span style={{ width: `${percent}%` }} /></div></div><div className="capture-count"><strong>{pal.captureCount}</strong><span>/ {goal}</span></div></>}
                 </article>;
-              }) : <div className="empty-state">No Pals match that search and filter.</div>}
+              }) : <div className="empty-state">No Pals match those capture, location, and search filters.</div>}
             </div>
 
             <aside className={`catalogue-note ${hasCompleteCatalogue ? "catalogue-complete" : ""}`}><strong>{hasCompleteCatalogue ? "Complete Paldeck detected" : "Older caught-only export detected"}</strong><p>{hasCompleteCatalogue ? `${stats?.named} of ${data.pals.length} entries have in-game labels. Use “Never caught” to see the ${stats?.uncaught} catchable species absent from your capture record. ${stats?.special ? `${stats.special} uncatchable Palpedia entry is excluded from capture goals. ` : ""}${data.summary?.unmappedCaptureEntryCount ?? data.unmappedCaptureEntries?.length ?? 0} non-Paldeck records were safely ignored.` : "This file predates the complete runtime catalogue, so species with no captures are absent. Export again with PalCaptureExporter v0.2.0 to reveal them."}</p></aside>
@@ -280,8 +327,8 @@ export default function Home() {
           <h2 id="map-dialog-title">{resolvePalName(mapPal) ?? mapPal.id}</h2>
           <p className="map-modal-intro">Choose a world and time. The filtered habitat map will open on PalDB in a new tab.</p>
           <div className="map-worlds">
-            <div><strong>Palpagos Islands</strong><div className="map-time-links"><a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a><a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div></div>
-            <div><strong>The World Tree</strong><div className="map-time-links"><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div></div>
+            <div><strong>Palpagos Islands{mapHabitatNote?.acquisition === "fishing" && <span className="habitat-badge fishing-badge">Fishing</span>}</strong><div className="map-time-links">{mapHabitatNote?.fishingTime === "night" ? <span className="map-time-unavailable"><span aria-hidden="true">☀</span> No day habitat</span> : <a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a>}<a href={palDbMapUrl(mapPal.id, "Palpagos_Islands", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div>{mapHabitatNote?.acquisition === "fishing" && <p className="habitat-context-note"><strong>Fishing habitat:</strong> PalDB records this Pal at night-time fishing spots.</p>}</div>
+            <div><strong>The World Tree{mapHabitatNote?.worldTree && <span className="habitat-badge">{mapHabitatNote.worldTree === "rare-aura-only" ? "Rare aura" : "Aura + normal"}</span>}</strong><div className="map-time-links"><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "dayTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☀</span> Day</a><a href={palDbMapUrl(mapPal.id, "The_World_Tree", "nightTimeLocations")} target="_blank" rel="noreferrer"><span aria-hidden="true">☾</span> Night</a></div>{mapHabitatNote?.worldTree === "rare-aura-only" && <p className="habitat-context-note"><strong>World Tree note:</strong> This Pal appears here only through the special Lv.80 World Tree Aura random spawn. Treat it as an opportunistic catch rather than an efficient farming target.</p>}{mapHabitatNote?.worldTree === "normal-and-aura" && <p className="habitat-context-note"><strong>World Tree note:</strong> This Pal has normal habitat here as well as the special Lv.80 Aura spawn, so it remains practical to hunt.</p>}</div>
           </div>
           <p className="map-modal-note">An empty map means PalDB has no habitat recorded for that world and time. Maps and location data are provided by <a href="https://paldb.cc" target="_blank" rel="noreferrer">PalDB</a>.</p>
         </section>

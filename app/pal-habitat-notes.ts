@@ -1,13 +1,18 @@
 export type PalHabitatNote = {
   worldTree?: "rare-aura-only" | "normal-and-aura";
-  note?: string;
+  acquisition?: "fishing";
+  fishingWorld?: "palpagos";
+  fishingTime?: "night";
 };
 
-// Curated from current PalDB spawn tables. Keep this separate from capture exports:
-// the export says how many were caught, while this file adds hunting-context metadata.
-// `rare-aura-only` means the Pal's only wild World Tree entry is the special
-// Lv.80 worldtree_9_55_WorldTreeAura pool, so it is a poor deliberate farming target there.
+// Small, curated exceptions which add hunting context to the bulk overworld
+// spawn index. Capture counts remain authoritative in the imported export.
 export const PAL_HABITAT_NOTES: Record<string, PalHabitatNote> = {
+  // PalDB v1.0.3 lists fishing spawners and night locations for Pengullet Lux.
+  Penguin_Electric: { acquisition: "fishing", fishingWorld: "palpagos", fishingTime: "night" },
+
+  // These Pals appear at the World Tree only in the special Lv.80
+  // worldtree_9_55_WorldTreeAura pool, making them poor deliberate targets.
   Deer_Ground: { worldTree: "rare-aura-only" }, // Eikthyrdeer Terra
   Umihebi: { worldTree: "rare-aura-only" }, // Jormuntide
   Gorilla_Ground: { worldTree: "rare-aura-only" }, // Gorirat Terra
@@ -35,5 +40,5 @@ export const PAL_HABITAT_NOTES: Record<string, PalHabitatNote> = {
 };
 
 export function getPalHabitatNote(id: string): PalHabitatNote | null {
-  return PAL_HABITAT_NOTES[id] ?? null;
+  return PAL_HABITAT_NOTES[id.replace(/^(?:BOSS|Boss)_/, "")] ?? null;
 }
