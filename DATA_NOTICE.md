@@ -25,6 +25,11 @@ spawn dataset. Its source repository, licence, generation timestamp, and Steam
 build ID are recorded in the file. No map images, coordinates, or third-party
 site assets are included.
 
+`app/pal-habitat-notes.ts` contains a small curated set of factual acquisition
+notes cross-checked against current PalDB spawn tables. These notes distinguish
+fishing and special World Tree Aura encounters from ordinary overworld habitat;
+they do not copy coordinates, maps, artwork, or other PalDB assets.
+
 ## Current name seed
 
 The initial internal-ID name seed is adapted from the MIT-licensed

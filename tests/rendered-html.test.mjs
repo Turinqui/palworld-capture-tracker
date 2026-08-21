@@ -20,6 +20,12 @@ test("ships a valid and attributable habitat index", async () => {
   assert.ok(worldTree.some((id) => palpagos.includes(id)), "expected some Pals to appear on both maps");
 });
 
+test("keeps curated acquisition exceptions explicit", async () => {
+  const notes = await readFile(new URL("../app/pal-habitat-notes.ts", import.meta.url), "utf8");
+  assert.match(notes, /Penguin_Electric:\s*\{\s*acquisition:\s*"fishing",\s*fishingWorld:\s*"palpagos",\s*fishingTime:\s*"night"\s*\}/);
+  assert.match(notes, /Deer_Ground:\s*\{\s*worldTree:\s*"rare-aura-only"\s*\}/);
+});
+
 test("renders development preview metadata", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);

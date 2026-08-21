@@ -16,7 +16,9 @@ An unofficial, browser-based tracker for JSON files created by
 - Exclude known uncatchable Palpedia entries from capture goals while keeping them visible.
 - Open PalDB habitat maps for any catchable Pal, filtered by world and day/night.
 - Narrow “Still hunting” and “Never caught” lists by World Tree, Palpagos Islands,
-  both maps, or species with no recorded wild habitat.
+  both maps, fishing, or other/special acquisition.
+- Flag World Tree Aura-only Pals as rare opportunistic catches rather than efficient
+  World Tree farming targets.
 - Follow the device colour scheme and provide a persistent light/dark toggle.
 
 Exporter v0.2.0 joins the sparse save record to Palworld's runtime catalogue,
@@ -37,6 +39,11 @@ from the MIT-licensed
 [`Awy64/palworld-atlas-data`](https://github.com/Awy64/palworld-atlas-data)
 dataset. The recorded game build is stored alongside the index so future game
 updates can be audited and refreshed without changing the exporter format.
+
+Small curated habitat notes cover acquisition types outside the bulk overworld
+index. Pengullet Lux is classified as Palpagos night fishing, while verified
+World Tree Aura entries are labelled according to whether they also have normal
+habitat there.
 
 ## Development
 
