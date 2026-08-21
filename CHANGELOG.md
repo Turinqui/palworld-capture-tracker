@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - 2026-08-21
+
+- Distinguish special Lv.80 World Tree Aura encounters from normal World Tree habitat in the map chooser.
+- Mark verified Aura-only World Tree entries as poor deliberate farming targets while keeping their PalDB map links available.
+- Keep spawn-context metadata separate from the capture export so the exporter stays focused on capture counts.
+
 ## 0.4.1 - 2026-08-17
 
 - Improve habitat-map button contrast in dark mode.
